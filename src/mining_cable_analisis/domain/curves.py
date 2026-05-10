@@ -43,6 +43,17 @@ def short_circuit_cable_curve(cm: float, Tn: float, Ts: float, conductor_type: s
             raise ValueError(f"Unkown material of the conductor: {conductor_type}")
     return (short_circuit_currents, time)
 
+def protection_curve(curve_type:str, time_dial: float, pick_up: tuple[float, str]) -> tuple:
+    # Checking if curve type is a standard curve
+    if curve_type in ["U1", "U2", "U3", "U4", "U5"]:
+        return u_protection_curve(curve_type=curve_type, time_dial=time_dial, pick_up=pick_up)
+    elif curve_type in ["C1", "C2", "C3", "C4", "C5"]:
+        return c_protection_curve(curve_type=curve_type, time_dial=time_dial, pick_up=pick_up)
+    elif curve_type in ["E1", "E2", "E3"]:
+        return e_protection_curve(curve_type=curve_type, time_dial=time_dial, pick_up=pick_up)
+    else:
+        pass # This is going to be reserve to look for a previously loaded protection curve (custom curve)
+
 def u_protection_curve(curve_type: str, time_dial: float, pick_up: tuple[float, str]) -> tuple:
     '''
     This functions is going to calculate the tripping time for a U.S. type curve. The formula will depend on the curve type the user input.
@@ -54,15 +65,61 @@ def u_protection_curve(curve_type: str, time_dial: float, pick_up: tuple[float, 
     # Check what type of cuve the user is requesting
     match curve_type:
         case "U1": # U1 (U.S. Moderately inverse)
-            tripping_times = time_dial * (0.026 + (0.0104 / ((m_multipliers ** 0.02) - 1))) # Formula for calculating tripping time of a U1 (U.S. Moderately inverse) curve
+            tripping_times = time_dial * (0.026 + (0.0104 / ((m_multipliers ** 0.02) - 1))) # Formula for calculating tripping time
         case "U2": # U2 (U.S. Inverse)
-            tripping_times = time_dial * (0.18 + (5.95 / ((m_multipliers ** 2) - 1))) # Formula for calculating tripping time of a U2 (U.S.  inverse) curve
+            tripping_times = time_dial * (0.18 + (5.95 / ((m_multipliers ** 2) - 1))) # Formula for calculating tripping time
         case "U3": # U3 (U.S. very inverse)
-            tripping_times = time_dial * (0.0963 + (3.88 / ((m_multipliers ** 2) - 1))) # Formula for calculating tripping time of a U3 (U.S. very inverse) curve
+            tripping_times = time_dial * (0.0963 + (3.88 / ((m_multipliers ** 2) - 1))) # Formula for calculating tripping time
         case "U4": # U4 (U.S. Extremly inverse)
-            tripping_times = time_dial * (0.0352 + (5.67 / ((m_multipliers ** 2) - 1))) # Formula for calculating tripping time of a U4 (U.S. extremly inverse) curve
+            tripping_times = time_dial * (0.0352 + (5.67 / ((m_multipliers ** 2) - 1))) # Formula for calculating tripping time
         case "U5": # U5 (U.S. Short-time inverse)
-            tripping_times = time_dial * (0.00262 + (0.00342 / ((m_multipliers ** 0.02) - 1))) # Formula for calculating tripping time of a U5 (U.S. short-time inverse) curve
+            tripping_times = time_dial * (0.00262 + (0.00342 / ((m_multipliers ** 0.02) - 1))) # Formula for calculating tripping time
+        case _:
+            raise ValueError(f"Unknow curve type: {curve_type}")
+            
+    return (m_multipliers, tripping_times)
+
+def c_protection_curve(curve_type: str, time_dial: float, pick_up: tuple[float, str]) -> tuple:
+    '''
+    This functions is going to calculate the tripping time for a IEC type curve. The formula will depend on the curve type the user input.
+    '''
+    pick_up_current = pick_up[0] # Pick_up current
+    evaluated_currents = np.arange(pick_up_current + 1, 1000 * pick_up_current, 1) # np array of currents to evaluate for calculating the tripping time
+    m_multipliers = evaluated_currents / pick_up_current # np array of multipliers
+
+    # Check what type of cuve the user is requesting
+    match curve_type:
+        case "C1": # C1 (IEC Standard inverse)
+            tripping_times = time_dial * (0.14 / ((m_multipliers ** 0.02) - 1)) # Formula for calculating tripping time
+        case "C2": # C2 (IEC Very Inverse)
+            tripping_times = time_dial * (13.5 / (m_multipliers - 1)) # Formula for calculating tripping time
+        case "C3": # C3 (IEC Extremly inverse)
+            tripping_times = time_dial * (80 / ((m_multipliers ** 2) - 1)) # Formula for calculating tripping time
+        case "C4": # C4 (IEC Long-time inverse)
+            tripping_times = time_dial * (120 / (m_multipliers - 1)) # Formula for calculating tripping time
+        case "C5": # C5 (IEC Short-time inverse)
+            tripping_times = time_dial * (0.05 / ((m_multipliers ** 0.04) - 1)) # Formula for calculating tripping time
+        case _:
+            raise ValueError(f"Unknow curve type: {curve_type}")
+            
+    return (m_multipliers, tripping_times)
+
+def e_protection_curve(curve_type: str, time_dial: float, pick_up: tuple[float, str]) -> tuple:
+    '''
+    This functions is going to calculate the tripping time for a IEEE type curve. The formula will depend on the curve type the user input.
+    '''
+    pick_up_current = pick_up[0] # Pick_up current
+    evaluated_currents = np.arange(pick_up_current + 1, 1000 * pick_up_current, 1) # np array of currents to evaluate for calculating the tripping time
+    m_multipliers = evaluated_currents / pick_up_current # np array of multipliers
+
+    # Check what type of cuve the user is requesting
+    match curve_type:
+        case "E1": # E1 (IEEE Moderately inverse)
+            tripping_times = time_dial * (0.1140 + (0.0515 / ((m_multipliers ** 0.02) - 1))) # Formula for calculating tripping time
+        case "E2": # E2 (IEEE Very Inverse)
+            tripping_times = time_dial * (0.491 + (19.61 / ((m_multipliers ** 2) - 1))) # Formula for calculating tripping time
+        case "E3": # E3 (IEEE Extremely inverse)
+            tripping_times = time_dial * (0.1217 + (28.2 / ((m_multipliers ** 2) - 1))) # Formula for calculating tripping time
         case _:
             raise ValueError(f"Unknow curve type: {curve_type}")
             
